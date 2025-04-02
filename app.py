@@ -16,34 +16,27 @@ def index():
 @app.route('/ask', methods=['POST'])
 def ask():
     try:
-        data = request.get_json()
-        user_message = data.get('message', '')
-        
-        if not DEEPSEEK_API_KEY:
-            return jsonify({"error": "API key not configured"}), 500
+        # 添加内存检查（需安装 psutil）
+        import psutil
+        if psutil.virtual_memory().percent > 90:
+            return jsonify({"error": "Server overloaded"}), 503
 
-        headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}"}
-        payload = {
-            "model": "deepseek-chat",
-            "messages": [{"role": "user", "content": user_message}]
-        }
-
+        # 设置更长的超时时间
         response = requests.post(
             DEEPSEEK_API_URL,
             headers=headers,
             json=payload,
-            timeout=10
+            timeout=20  # 延长至20秒
         )
-        response.raise_for_status()  # 检查HTTP错误
-        return jsonify({"response": response.json()["choices"][0]["message"]["content"]})
+        response.raise_for_status()
+        return jsonify(response.json())
 
-    except requests.exceptions.RequestException as e:
-        # 捕获所有requests库的异常
-        return jsonify({
-            "error": "DeepSeek API请求失败",
-            "details": str(e),
-            "api_key_configured": bool(DEEPSEEK_API_KEY)  # 检查密钥是否加载
-        }), 500
+    except requests.exceptions.Timeout:
+        return jsonify({"error": "DeepSeek API timeout"}), 504
+    except Exception as e:
+        # 记录完整错误日志（关键！）
+        app.logger.error(f"API Error: {str(e)}", exc_info=True)
+        return jsonify({"error": "Internal error"}), 500
 
 # if __name__ == '__main__':
 #     app.run(host='0.0.0.0', port=5000, debug=True)
