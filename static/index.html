@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DeepSeek 助手</title>
+    <style>
+        body { font-family: Arial; max-width: 600px; margin: 0 auto; padding: 20px; }
+        #response { margin-top: 20px; padding: 10px; border: 1px solid #ddd; min-height: 100px; }
+    </style>
+</head>
+<body>
+    <h1>DeepSeek 问答</h1>
+    <input type="text" id="message" placeholder="输入问题" style="width: 70%; padding: 8px;">
+    <button onclick="askDeepSeek()" style="padding: 8px 15px;">发送</button>
+    <div id="response"></div>
+
+    <script>
+        async function askDeepSeek() {
+            const message = document.getElementById("message").value;
+            const responseDiv = document.getElementById("response");
+            responseDiv.innerText = "思考中...";
+            
+            try {
+                const response = await fetch("/ask", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message })
+                });
+                const data = await response.json();
+                responseDiv.innerText = data.response || data.error;
+            } catch (error) {
+                responseDiv.innerText = `请求失败: ${error}`;
+            }
+        }
+    </script>
+</body>
+</html>
