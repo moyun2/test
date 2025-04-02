@@ -15,31 +15,35 @@ def index():
 
 @app.route('/ask', methods=['POST'])
 def ask():
-    data = request.get_json()
-    user_message = data.get('message', '')
-
-    # 调用 DeepSeek API
-    headers = {
-        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
-    payload = {
-        "model": "deepseek-chat",  # 确认 DeepSeek 支持的模型名称
-        "messages": [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": user_message}
-        ]
-    }
-
     try:
-        response = requests.post(DEEPSEEK_API_URL, headers=headers, json=payload)
-        response.raise_for_status()  # 检查 HTTP 错误
-        ai_response = response.json()["choices"][0]["message"]["content"]
-        return jsonify({"response": ai_response})
-    
+        data = request.get_json()
+        user_message = data.get('message', '')
+        
+        if not DEEPSEEK_API_KEY:
+            return jsonify({"error": "API key not configured"}), 500
+
+        headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}"}
+        payload = {
+            "model": "deepseek-chat",
+            "messages": [{"role": "user", "content": user_message}]
+        }
+
+        response = requests.post(
+            DEEPSEEK_API_URL,
+            headers=headers,
+            json=payload,
+            timeout=10
+        )
+        response.raise_for_status()  # 检查HTTP错误
+        return jsonify({"response": response.json()["choices"][0]["message"]["content"]})
+
     except requests.exceptions.RequestException as e:
-        return jsonify({"error": str(e)}), 500
+        # 捕获所有requests库的异常
+        return jsonify({
+            "error": "DeepSeek API请求失败",
+            "details": str(e),
+            "api_key_configured": bool(DEEPSEEK_API_KEY)  # 检查密钥是否加载
+        }), 500
 
 # if __name__ == '__main__':
 #     app.run(host='0.0.0.0', port=5000, debug=True)
